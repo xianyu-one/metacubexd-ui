@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "0 0 * * 1"
 
 jobs:
   build-and-push:
@@ -14,21 +16,29 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Get Caddy release version
+        id: get-version
+        run: |
+          TAG=$(curl -s https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest | jq -r .tag_name)
+          echo "version=${TAG}" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           platforms: linux/arm64,linux/amd64
-          tags: mrxianyu/metacubexd-ui:latest
+          tags: |
+            mrxianyu/metacubexd-ui:latest
+            mrxianyu/metacubexd-ui:${{ steps.get-version.outputs.version }}
 
       - name: Docker Hub Description
         uses: peter-evans/dockerhub-description@v3
